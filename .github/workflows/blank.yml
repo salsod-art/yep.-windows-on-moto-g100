@@ -1,0 +1,43 @@
+name: Build UEFI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          chmod +x setup_env.sh
+          ./setup_env.sh -p apt
+
+      - name: Build
+        run: |
+          python3 build_uefi.py -d nio
+
+      - name: Show build output
+        run: |
+          find . -type f \( -name "*.img" -o -name "*.efi" -o -name "*.fd" \) -print
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: nio-uefi
+          path: |
+            **/*.img
+            **/*.efi
+            **/*.fd
+          if-no-files-found: error
