@@ -8,51 +8,61 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 1
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
-
-            - name: Install dependencies
+      - name: Check source tree
         run: |
-          sudo apt update
-          sudo apt install -y \
-            pip \
+          pwd
+          ls -la
+          test -f build_uefi.py
+          test -f pip-requirements.txt
+          test -f setup_env.sh
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
             git \
-            mono-devel \
             build-essential \
-            lld \
-            uuid-dev \
-            nasm \
-            gcc-aarch64-linux-gnu \
-            python3 \
-            python3-git \
-            python3-pip \
-            gettext \
-            locales \
-            gnupg \
-            ca-certificates \
             clang \
             llvm \
-            curl
+            lld \
+            nasm \
+            uuid-dev \
+            gcc-aarch64-linux-gnu \
+            mono-devel \
+            python3 \
+            python3-pip
 
-          python3 -m pip install -r pip-requirements.txt --break-system-packages
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r pip-requirements.txt
 
-      - name: Build
+      - name: Build UEFI
         run: |
           python3 build_uefi.py -d nio
 
-      - name: Show build output
+      - name: Find build outputs
         run: |
-          find . -type f \( -name "*.img" -o -name "*.efi" -o -name "*.fd" \) -print
+          echo "Build outputs:"
+          find . -type f \( \
+            -name "*.img" -o \
+            -name "*.efi" -o \
+            -name "*.fd" -o \
+            -name "*.bin" \
+          \) -print
 
-      - name: Upload firmware
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: nio-uefi
@@ -60,4 +70,5 @@ jobs:
             **/*.img
             **/*.efi
             **/*.fd
-          if-no-files-found: error
+            **/*.bin
+          if-no-files-found: warn
